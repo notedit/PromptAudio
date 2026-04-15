@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prompt-audio"
+version = "0.1.0"
+description = "CosyVoice3 Prompt Audio Selector"
+requires-python = ">=3.10"
+dependencies = [
+    "whisperx>=3.1",
+    "librosa>=0.10",
+    "soundfile>=0.12",
+    "praat-parselmouth>=0.4",
+    "speechmos>=0.1",
+    "torchaudio>=2.0",
+    "torchmetrics[audio]>=1.0",
+    "transformers>=4.30",
+    "torch>=2.0",
+    "numpy>=1.24",
+]
+
+[project.scripts]
+prompt-audio = "prompt_audio.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["prompt_audio*"]

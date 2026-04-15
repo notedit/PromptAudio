@@ -4,15 +4,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-PromptAudio is a Python project for managing and optimizing reference audio (prompt audio) for CosyVoice3's in-context learning TTS system. CosyVoice3 is highly sensitive to the prosody patterns in prompt audio, so this project focuses on two core strategies:
+PromptAudio is a Python tool that automatically selects optimal prompt audio segments from longer recordings for CosyVoice3's in-context learning TTS system. Given a <=5 minute audio file, it outputs the best <=10 second segment optimized for quality and prosodic expressiveness.
 
-1. **Prompt Library with Tiered Labeling** - Build a tagging system for reference audio based on speech rate, emotion, and prosodic richness. At inference time, match the optimal prompt to the target scenario.
-2. **Multi-Prompt Fusion** - When architecture permits, use weighted speaker embeddings from multiple prompts with different prosody styles to expand expressiveness.
+CosyVoice3's speech tokenizer (25 tokens/s) is highly sensitive to prompt prosody patterns — the prompt's speaking style transfers directly to synthesized output.
 
 ## Build & Run
 
-This is a Python project. No build/test/lint commands are configured yet. When they are added, update this section.
+```bash
+# Install
+pip install -r requirements.txt
+# or
+pip install -e .
+
+# Run (requires GPU for WhisperX + emotion model)
+python -m prompt_audio input.wav -o ./output
+python -m prompt_audio input.wav -o ./output -p audiobook   # preset: audiobook/broadcast/noisy
+python -m prompt_audio input.wav -o ./output --device cpu    # CPU fallback
+```
 
 ## Architecture
 
-Project is in early stage. Architecture will be documented as it develops.
+5-step pipeline in `prompt_audio/`:
+
+1. **preprocessor.py** — Resample to 16kHz mono, CosyVoice3 volume normalization (`wav / max * 0.6`)
+2. **transcriber.py** — WhisperX ASR + forced alignment → word-level and sentence-level timestamps
+3. **candidate_generator.py** — Enumerate consecutive sentence combinations within 5-10s duration window
+4. **quality_gate.py** — Reject segments: DNSMOS < 3.5, clipping >= 1%, HNR < 15dB, speech ratio < 60%
+5. **scorer.py** — Rank by `0.6 * Quality + 0.4 * Prosody` (DNSMOS/NISQA/SQUIM/SNR + F0 CV/energy CV/arousal)
+
+Entry points: `cli.py` (CLI), `pipeline.py` (programmatic), `__main__.py` (module execution).
+
+Config and presets in `config.py`. Silence padding (150ms) in `silence_handler.py`.
+
+## Key Dependencies
+
+- **whisperx**: ASR + Chinese forced alignment (wav2vec2 XLSR-53)
+- **parselmouth**: F0/energy/HNR via Praat engine
+- **speechmos**: DNSMOS non-intrusive quality scoring
+- **silero-vad**: Voice activity detection for speech ratio
+- **transformers**: wav2vec2 emotion model (arousal dimension)
